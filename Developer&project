@@ -1,15 +1,16 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
+
 
 class DeveloperGUI:
     def __init__(self, master):
         self.master = master
         self.master.title("Developer Information")
-        
+
         self.developers = []  # List to store developer information
 
         # Labels and Entry widgets for developer information
-        self.label_name = tk.Label(master, text="Name:")
+        self.label_name = tk.Label(master, text="Developer Name:")
         self.entry_name = tk.Entry(master)
 
         self.label_skills = tk.Label(master, text="Skills:")
@@ -22,11 +23,14 @@ class DeveloperGUI:
         self.button_insert = tk.Button(master, text="Insert", command=self.insert_developer)
         self.button_update = tk.Button(master, text="Update", command=self.update_developer)
         self.button_delete = tk.Button(master, text="Delete", command=self.delete_developer)
-        self.button_project_details = tk.Button(master, text="Project Details", command=self.open_project_details_gui)
+        self.button_project_details=tk.Button(master, text="Project Details", command=self.open_Project_Details_GUI)
 
-        # Listbox to display developers
-        self.listbox = tk.Listbox(master, selectmode=tk.SINGLE)
-        self.listbox.bind('<<ListboxSelect>>', self.load_developer_info)
+        # Treeview to display developers details
+        self.tree = ttk.Treeview(master, columns=("Developer Name", "Skills", "Project Name"), show="headings")
+        self.tree.heading("Developer Name", text="Developer Name")
+        self.tree.heading("Skills", text="Skills")
+        self.tree.heading("Project Name", text="Project Name")
+        self.tree.bind("<ButtonRelease-1>", self.load_developer_info)
 
         # Arrange widgets using grid layout
         self.label_name.grid(row=0, column=0, padx=5, pady=5)
@@ -39,12 +43,9 @@ class DeveloperGUI:
         self.button_insert.grid(row=3, column=0, columnspan=2, pady=10)
         self.button_update.grid(row=4, column=0, columnspan=2, pady=10)
         self.button_delete.grid(row=5, column=0, columnspan=2, pady=10)
-        self.button_project_details.grid(row=6, column=0, columnspan=2, pady=10)
+        self.button_project_details.grid(row=7,column=0,columnspan=2)
 
-        self.listbox.grid(row=0, column=2, rowspan=6, padx=10)
-
-        # Populate the listbox with developer names
-        self.update_listbox()
+        self.tree.grid(row=0, column=2, rowspan=6, padx=10)
 
     def insert_developer(self):
         name = self.entry_name.get()
@@ -52,23 +53,24 @@ class DeveloperGUI:
         project_name = self.entry_project.get()
 
         if name and skills and project_name:
-            self.developers.append({"Name": name, "Skills": skills, "Project Name": project_name})
-            self.update_listbox()
+            self.developers.append({"Developer Name": name, "Skills": skills, "Project Name": project_name})
+            self.update_treeview()
             self.clear_entries()
         else:
             messagebox.showwarning("Incomplete Information", "Please enter all details.")
 
     def update_developer(self):
-        selected_index = self.listbox.curselection()
-        if selected_index:
-            index = selected_index[0]
+        selected_item = self.tree.selection()
+        if selected_item:
+            item = selected_item[0]
             name = self.entry_name.get()
             skills = self.entry_skills.get()
             project_name = self.entry_project.get()
 
             if name and skills and project_name:
-                self.developers[index] = {"Name": name, "Skills": skills, "Project Name": project_name}
-                self.update_listbox()
+                self.developers[self.get_selected_index(item)] = {"Developer Name": name, "Skills": skills,
+                                                                  "Project Name": project_name}
+                self.update_treeview()
                 self.clear_entries()
             else:
                 messagebox.showwarning("Incomplete Information", "Please enter all details.")
@@ -76,32 +78,34 @@ class DeveloperGUI:
             messagebox.showwarning("No Developer Selected", "Please select a developer from the list.")
 
     def delete_developer(self):
-        selected_index = self.listbox.curselection()
-        if selected_index:
-            index = selected_index[0]
-            del self.developers[index]
-            self.update_listbox()
+        selected_item = self.tree.selection()
+        if selected_item:
+            item = selected_item[0]
+            del self.developers[self.get_selected_index(item)]
+            self.update_treeview()
             self.clear_entries()
         else:
             messagebox.showwarning("No Developer Selected", "Please select a developer from the list.")
 
     def load_developer_info(self, event):
-        selected_index = self.listbox.curselection()
-        if selected_index:
-            index = selected_index[0]
-            developer = self.developers[index]
+        selected_item = self.tree.selection()
+        if selected_item:
+            item = selected_item[0]
+            developer = self.developers[self.get_selected_index(item)]
             self.entry_name.delete(0, tk.END)
-            self.entry_name.insert(0, developer["Name"])
+            self.entry_name.insert(0, developer["Developer Name"])
             self.entry_skills.delete(0, tk.END)
             self.entry_skills.insert(0, developer["Skills"])
             self.entry_project.delete(0, tk.END)
             self.entry_project.insert(0, developer["Project Name"])
 
-    def update_listbox(self):
-        # Clear the listbox and populate it with developer names
-        self.listbox.delete(0, tk.END)
+    def update_treeview(self):
+        # Clear the treeview and populate it with developer details
+        for i in self.tree.get_children():
+            self.tree.delete(i)
         for developer in self.developers:
-            self.listbox.insert(tk.END, developer["Name"])
+            self.tree.insert("", "end",
+                             values=(developer["Developer Name"], developer["Skills"], developer["Project Name"]))
 
     def clear_entries(self):
         # Clear entry fields
@@ -109,18 +113,21 @@ class DeveloperGUI:
         self.entry_skills.delete(0, tk.END)
         self.entry_project.delete(0, tk.END)
 
-    def open_project_details_gui(self):
-        project_details_window = tk.Toplevel(self.master)
-        project_details_app = ProjectDetailsGUI(project_details_window, self.developers)
+    def get_selected_index(self, item):
+        index = self.tree.index(item)
+        return index if index >= 0 else None
+    def open_Project_Details_GUI(self):
+        project_details_window=tk.Toplevel(self.master)
+        project_details_app=ProjectGUI(project_details_window)
 
-class ProjectDetailsGUI:
-    def __init__(self, master, developers):
+class ProjectGUI:
+    def __init__(self, master):
         self.master = master
-        self.master.title("Project Details")
+        self.master.title("Project Information")
 
-        self.developers = developers  # Reference to the developers list from DeveloperGUI
+        self.projects = []  # List to store project information
 
-        # Labels and Entry widgets for project details
+        # Labels and Entry widgets for project information
         self.label_project_name = tk.Label(master, text="Project Name:")
         self.entry_project_name = tk.Entry(master)
 
@@ -134,12 +141,18 @@ class ProjectDetailsGUI:
         self.entry_developer_name = tk.Entry(master)
 
         # Buttons for CRUD operations
-        self.button_insert = tk.Button(master, text="Insert", command=self.insert_project_details)
-        self.button_update = tk.Button(master, text="Update", command=self.update_project_details)
-        self.button_delete = tk.Button(master, text="Delete", command=self.delete_project_details)
+        self.button_insert = tk.Button(master, text="Insert", command=self.insert_project)
+        self.button_update = tk.Button(master, text="Update", command=self.update_project)
+        self.button_delete = tk.Button(master, text="Delete", command=self.delete_project)
 
-        # Text widget to display project details
-        self.text_project_details = tk.Text(master, height=10, width=40, state=tk.DISABLED)
+        # Treeview to display project details
+        self.tree = ttk.Treeview(master, columns=("Project Name", "Project Type", "Technology Used", "Developer Name"),
+                                 show="headings")
+        self.tree.heading("Project Name", text="Project Name")
+        self.tree.heading("Project Type", text="Project Type")
+        self.tree.heading("Technology Used", text="Technology Used")
+        self.tree.heading("Developer Name", text="Developer Name")
+        self.tree.bind("<ButtonRelease-1>", self.load_project_info)
 
         # Arrange widgets using grid layout
         self.label_project_name.grid(row=0, column=0, padx=5, pady=5)
@@ -155,72 +168,75 @@ class ProjectDetailsGUI:
         self.button_update.grid(row=5, column=0, columnspan=2, pady=10)
         self.button_delete.grid(row=6, column=0, columnspan=2, pady=10)
 
-        self.text_project_details.grid(row=7, column=0, columnspan=2, padx=10, pady=10)
+        self.tree.grid(row=0, column=2, rowspan=6, padx=10)
 
-        # Populate the text widget with project details
-        self.update_project_details_text()
-
-    def insert_project_details(self):
+    def insert_project(self):
         project_name = self.entry_project_name.get()
         project_type = self.entry_project_type.get()
         technology_used = self.entry_technology_used.get()
         developer_name = self.entry_developer_name.get()
 
         if project_name and project_type and technology_used and developer_name:
-            self.developers.append({
-                "Project Name": project_name,
-                "Project Type": project_type,
-                "Technology Used": technology_used,
-                "Developer Name": developer_name
-            })
-            self.update_project_details_text()
+            self.projects.append(
+                {"Project Name": project_name, "Project Type": project_type, "Technology Used": technology_used,
+                 "Developer Name": developer_name})
+            self.update_treeview()
             self.clear_entries()
         else:
             messagebox.showwarning("Incomplete Information", "Please enter all details.")
 
-    def update_project_details(self):
-        selected_index = self.get_selected_developer_index()
-        if selected_index is not None:
+    def update_project(self):
+        selected_item = self.tree.selection()
+        if selected_item:
+            item = selected_item[0]
             project_name = self.entry_project_name.get()
             project_type = self.entry_project_type.get()
             technology_used = self.entry_technology_used.get()
             developer_name = self.entry_developer_name.get()
 
             if project_name and project_type and technology_used and developer_name:
-                self.developers[selected_index] = {
-                    "Project Name": project_name,
-                    "Project Type": project_type,
-                    "Technology Used": technology_used,
-                    "Developer Name": developer_name
-                }
-                self.update_project_details_text()
+                self.projects[self.get_selected_index(item)] = {"Project Name": project_name,
+                                                                "Project Type": project_type,
+                                                                "Technology Used": technology_used,
+                                                                "Developer Name": developer_name}
+                self.update_treeview()
                 self.clear_entries()
             else:
                 messagebox.showwarning("Incomplete Information", "Please enter all details.")
         else:
-            messagebox.showwarning("No Developer Selected", "Please select a developer from the list.")
+            messagebox.showwarning("No Project Selected", "Please select a project from the list.")
 
-    def delete_project_details(self):
-        selected_index = self.get_selected_developer_index()
-        if selected_index is not None:
-            del self.developers[selected_index]
-            self.update_project_details_text()
+    def delete_project(self):
+        selected_item = self.tree.selection()
+        if selected_item:
+            item = selected_item[0]
+            del self.projects[self.get_selected_index(item)]
+            self.update_treeview()
             self.clear_entries()
         else:
-            messagebox.showwarning("No Developer Selected", "Please select a developer from the list.")
+            messagebox.showwarning("No Project Selected", "Please select a project from the list.")
 
-    def update_project_details_text(self):
-        details = ""
-        for developer in self.developers:
-            details += f"Project Name: {developer['Project Name']}\n"
-            details += f"Project Type: {developer['Project Type']}\n"
-            details += f"Technology Used: {developer['Technology Used']}\n"
-            details += f"Developer Name: {developer['Developer Name']}\n\n"
+    def load_project_info(self, event):
+        selected_item = self.tree.selection()
+        if selected_item:
+            item = selected_item[0]
+            project = self.projects[self.get_selected_index(item)]
+            self.entry_project_name.delete(0, tk.END)
+            self.entry_project_name.insert(0, project["Project Name"])
+            self.entry_project_type.delete(0, tk.END)
+            self.entry_project_type.insert(0, project["Project Type"])
+            self.entry_technology_used.delete(0, tk.END)
+            self.entry_technology_used.insert(0, project["Technology Used"])
+            self.entry_developer_name.delete(0, tk.END)
+            self.entry_developer_name.insert(0, project["Developer Name"])
 
-        self.text_project_details.config(state=tk.NORMAL)
-        self.text_project_details.delete(1.0, tk.END)
-        self.text_project_details.insert(tk.END, details)
-        self.text_project_details.config(state=tk.DISABLED)
+    def update_treeview(self):
+        # Clear the treeview and populate it with project details
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        for project in self.projects:
+            self.tree.insert("", "end", values=(
+            project["Project Name"], project["Project Type"], project["Technology Used"], project["Developer Name"]))
 
     def clear_entries(self):
         # Clear entry fields
@@ -229,9 +245,11 @@ class ProjectDetailsGUI:
         self.entry_technology_used.delete(0, tk.END)
         self.entry_developer_name.delete(0, tk.END)
 
-    def get_selected_developer_index(self):
-        selected_index = DeveloperGUI.listbox.curselection()
-        return None if not selected_index else selected_index[0]
+    def get_selected_index(self, item):
+        index = self.tree.index(item)
+        return index if index >= 0 else None
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
